@@ -291,7 +291,11 @@ class Cube2x2:
         print("Resolvido?: ", self.is_solved())
         print("Válido?:    ", self.valid)
 
-    def print_colored_crossed_cube(self):
+    def get_representation(self):
+        return (tuple(estado.positions) , tuple(estado.orientations))
+
+
+    def get_color_matrix(self, raw_color = True):
         def get_oriented_colors(index):
             ori = self.orientations[index]
             base = piece_colors[self.positions[index]]
@@ -307,8 +311,8 @@ class Cube2x2:
         }
 
         def set_face(face, r, c, color):
-            faces[face][r][c] = COLORS[color] + '  ' + COLORS['END']
-
+            faces[face][r][c] = (COLORS[color] + '  ' + COLORS['END']) if raw_color else color 
+            
         for idx in range(8):
             c = get_oriented_colors(idx)
             match idx:
@@ -344,6 +348,12 @@ class Cube2x2:
                     set_face('D', 1, 1, c[0])
                     set_face('R', 1, 1, c[1])
                     set_face('B', 1, 0, c[2])
+
+        return faces
+
+    def print_colored_crossed_cube(self):
+        
+        faces = self.get_color_matrix()
 
         def rotate_90_clockwise(mat):
             return [[mat[1][0], mat[0][0]],
@@ -417,29 +427,36 @@ if __name__ == "__main__":
     
     jj = 0
 
+    rotation_list = ["U", "U2", "U'"]
+
     for perm in permutações_pares:
         for orientacoes in gerar_orientacoes_validas():
-            estado = cube.copy()
+            for t in range(4):
+                estado = cube.copy()
 
-            # Corrigir posições
-            for i in range(4):
-                while estado.positions[i] != perm[i]:
-                    idx_trocar = estado.positions.index(perm[i])
-                    estado.swap_pieces(i, idx_trocar)
+                # Corrigir posições
+                for i in range(4):
+                    while estado.positions[i] != perm[i]:
+                        idx_trocar = estado.positions.index(perm[i])
+                        estado.swap_pieces(i, idx_trocar)
 
-            # Corrigir orientações
-            for i in range(4):
-                while estado.orientations[i] != orientacoes[i]:
-                    estado.rotate_piece(i, 1)
+                # Corrigir orientações
+                for i in range(4):
+                    while estado.orientations[i] != orientacoes[i]:
+                        estado.rotate_piece(i, 1)
 
-            # Criar uma representação única da configuração (posições + orientações)
-            representacao = (tuple(estado.positions[:4]), tuple(estado.orientations[:4]))
+                if(t > 0):
+                    estado.apply_move(rotation_list[t - 1])
 
-            if representacao not in configuracoes_unicas:
-                configuracoes_unicas.add(representacao)
-                jj += 1
-                print("\nNova configuração única:", jj, estado.is_valid())
-                estado.print_colored_crossed_cube()
+                # Criar uma representação única da configuração (posições + orientações)
+                representacao = estado.get_representation()
+
+                if representacao not in configuracoes_unicas:
+                    if(True or estado.get_color_matrix(False)["U"] == [["W", "W"], ["W", "W"]]):
+                        configuracoes_unicas.add(representacao)
+                        jj += 1
+                        print(jj, representacao)
+                        #estado.print_colored_crossed_cube()
 
     # Trocar apenas duas peças (torna o cubo inválido pela paridade)
     #cube4.swap_pieces(1, 0)
