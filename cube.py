@@ -82,12 +82,6 @@ class Cube2x2:
     def is_valid_config(positions, orientations):
         """
         Verifica se uma configuração de posições e orientações é válida.
-        
-        Um cubo 2x2 válido deve satisfazer:
-        1. Posições: uma permutação de 0-7 (cada peça aparece exatamente uma vez)
-        2. Paridade das posições: número par de trocas para voltar à ordem original
-        3. Orientações: valores entre 0 e 2
-        4. Soma das orientações: múltiplo de 3
         """
         # Verificar se positions é uma permutação válida de 0-7
         if sorted(positions) != list(range(8)):
@@ -104,17 +98,34 @@ class Cube2x2:
             print("Erro: A soma das orientações deve ser um múltiplo de 3.")
             return False
         
-        # Verificar a paridade da permutação
-        inversions = 0
-        for i in range(len(positions)):
-            for j in range(i + 1, len(positions)):
-                print(positions[i] , positions[j])
-                if positions[i] > positions[j]:
-                    inversions += 1
+        # Verificar a paridade: em um cubo 2x2, a permutação deve ter paridade par
+        # precisamos verificar a paridade da permutação das peças, não dos índices
+        perm = [0] * 8
+        for i in range(8):
+            perm[positions[i]] = i
         
-        print(inversions)
-
-        if inversions % 2 != 0:
+        # Contar ciclos na permutação
+        visited = [False] * 8
+        cycle_count = 0
+        odd_cycle_count = 0
+        
+        for i in range(8):
+            if not visited[i]:
+                cycle_len = 0
+                current = i
+                
+                while not visited[current]:
+                    visited[current] = True
+                    current = perm[current]
+                    cycle_len += 1
+                
+                cycle_count += 1
+                if cycle_len % 2 == 1:
+                    odd_cycle_count += 1
+        
+        # A paridade da permutação é determinada pelo número de ciclos de comprimento ímpar
+        # Em um cubo 2x2 válido, esse número deve ser par
+        if odd_cycle_count % 2 != 0:
             print("Erro: A paridade da permutação deve ser par.")
             return False
         
@@ -369,16 +380,60 @@ class Cube2x2:
 
 # Exemplos de uso
 if __name__ == "__main__":
-    print("=== Exemplo 1: Criando um cubo válido ===")
-    # Cubo resolvido (estado padrão)
-    cube1 = Cube2x2.from_config([0, 1, 2, 3, 4, 5, 6, 7], [0, 0, 0, 0, 0, 0, 0, 0])
-    if cube1:
-        cube1.print_state()
-        cube1.print_colored_crossed_cube()
-    
-    print("\n=== Exemplo 4: Aplicando permutação inválida ===")
-    cube4 = Cube2x2()
+
+    permutações_pares = [
+        (0, 1, 2, 3),
+        (1, 0, 3, 2),
+        (2, 3, 0, 1),
+        (3, 2, 1, 0),
+        (1, 2, 0, 3),
+        (2, 0, 1, 3),
+        (1, 3, 2, 0),
+        (3, 0, 2, 1),
+        (2, 1, 3, 0),
+        (0, 2, 3, 1),
+        (3, 1, 0, 2),
+        (0, 3, 1, 2)
+    ]
+
+    # Função para rotacionar 90° sentido horário
+    def rotacionar90(perm):
+        return (perm[3], perm[0], perm[1], perm[2])
+
+    # Função para gerar as 4 rotações de uma permutação
+    def gerar_rotacoes(perm):
+        rotacoes = [perm]
+        for _ in range(3):
+            perm = rotacionar90(perm)
+            rotacoes.append(perm)
+        return rotacoes
+
+    cube = Cube2x2()
+
+    # Usar um set para guardar as configurações únicas (sem repetições)
+    configuracoes_unicas = set()
+
+    jj = 0
+
+    for perm in permutações_pares:
+        rotacoes = gerar_rotacoes(perm)
+        for rot in rotacoes:
+            if rot not in configuracoes_unicas:
+                configuracoes_unicas.add(rot)
+
+                print("\nNova configuração:")
+                estado = cube.copy()
+
+                # Trocar peças até que estado vire a configuração rotacionada
+                for i in range(4):
+                    while estado.positions[i] != rot[i]:
+                        idx_trocar = estado.positions.index(rot[i])
+                        estado.swap_pieces(i, idx_trocar)
+
+                jj += 1
+                print(jj)
+                estado.print_colored_crossed_cube()
+
     # Trocar apenas duas peças (torna o cubo inválido pela paridade)
-    cube4.swap_pieces(1, 0)
-    cube4.print_state()
-    cube4.print_colored_crossed_cube()
+    #cube4.swap_pieces(1, 0)
+
