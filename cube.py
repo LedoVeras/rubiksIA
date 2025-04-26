@@ -4,6 +4,8 @@ from copy import deepcopy
 def mod3(x):
     return x % 3
 
+SHOW_ERROS = False
+
 # Define os movimentos possíveis com seus efeitos
 MOVE_TABLE = {
     'U':  {'cycle': [0, 1, 2, 3], 'orientation_delta': [0, 0, 0, 0]},
@@ -85,17 +87,22 @@ class Cube2x2:
         """
         # Verificar se positions é uma permutação válida de 0-7
         if sorted(positions) != list(range(8)):
-            print("Erro: As posições devem ser uma permutação de 0-7.")
+            if(SHOW_ERROS):
+                print("Erro: As posições devem ser uma permutação de 0-7.")
             return False
         
         # Verificar se todas as orientações são 0, 1 ou 2
         if not all(0 <= o <= 2 for o in orientations):
-            print("Erro: As orientações devem estar entre 0 e 2.")
+            if(SHOW_ERROS):
+                print("Erro: As orientações devem estar entre 0 e 2.")
+
             return False
         
         # Verificar se a soma das orientações é múltiplo de 3
         if sum(orientations) % 3 != 0:
-            print("Erro: A soma das orientações deve ser um múltiplo de 3.")
+            if(SHOW_ERROS):
+                print("Erro: A soma das orientações deve ser um múltiplo de 3.")
+
             return False
         
         # Verificar a paridade: em um cubo 2x2, a permutação deve ter paridade par
@@ -126,7 +133,8 @@ class Cube2x2:
         # A paridade da permutação é determinada pelo número de ciclos de comprimento ímpar
         # Em um cubo 2x2 válido, esse número deve ser par
         if odd_cycle_count % 2 != 0:
-            print("Erro: A paridade da permutação deve ser par.")
+            if(SHOW_ERROS):
+                print("Erro: A paridade da permutação deve ser par.")
             return False
         
         return True
@@ -381,6 +389,8 @@ class Cube2x2:
 # Exemplos de uso
 if __name__ == "__main__":
 
+    import itertools
+
     permutações_pares = [
         (0, 1, 2, 3),
         (1, 0, 3, 2),
@@ -396,42 +406,39 @@ if __name__ == "__main__":
         (0, 3, 1, 2)
     ]
 
-    # Função para rotacionar 90° sentido horário
-    def rotacionar90(perm):
-        return (perm[3], perm[0], perm[1], perm[2])
-
-    # Função para gerar as 4 rotações de uma permutação
-    def gerar_rotacoes(perm):
-        rotacoes = [perm]
-        for _ in range(3):
-            perm = rotacionar90(perm)
-            rotacoes.append(perm)
-        return rotacoes
+    def gerar_orientacoes_validas():
+        """Gera apenas combinações de orientações onde a soma % 3 == 0."""
+        todas = itertools.product([0, 1, 2], repeat=4)
+        return [orient for orient in todas if sum(orient) % 3 == 0]
 
     cube = Cube2x2()
 
-    # Usar um set para guardar as configurações únicas (sem repetições)
     configuracoes_unicas = set()
-
+    
     jj = 0
 
     for perm in permutações_pares:
-        rotacoes = gerar_rotacoes(perm)
-        for rot in rotacoes:
-            if rot not in configuracoes_unicas:
-                configuracoes_unicas.add(rot)
+        for orientacoes in gerar_orientacoes_validas():
+            estado = cube.copy()
 
-                print("\nNova configuração:")
-                estado = cube.copy()
+            # Corrigir posições
+            for i in range(4):
+                while estado.positions[i] != perm[i]:
+                    idx_trocar = estado.positions.index(perm[i])
+                    estado.swap_pieces(i, idx_trocar)
 
-                # Trocar peças até que estado vire a configuração rotacionada
-                for i in range(4):
-                    while estado.positions[i] != rot[i]:
-                        idx_trocar = estado.positions.index(rot[i])
-                        estado.swap_pieces(i, idx_trocar)
+            # Corrigir orientações
+            for i in range(4):
+                while estado.orientations[i] != orientacoes[i]:
+                    estado.rotate_piece(i, 1)
 
+            # Criar uma representação única da configuração (posições + orientações)
+            representacao = (tuple(estado.positions[:4]), tuple(estado.orientations[:4]))
+
+            if representacao not in configuracoes_unicas:
+                configuracoes_unicas.add(representacao)
                 jj += 1
-                print(jj)
+                print("\nNova configuração única:", jj, estado.is_valid())
                 estado.print_colored_crossed_cube()
 
     # Trocar apenas duas peças (torna o cubo inválido pela paridade)
